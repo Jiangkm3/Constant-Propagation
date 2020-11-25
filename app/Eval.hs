@@ -17,8 +17,6 @@ import Tcons1
 import Loop
 import Abstract1
 import AbstractMonad
-import Apron.Var
-import Apron.Environment
 import Language.C.Data.Ident
 import Language.C.Data.Node
 import Language.C.Syntax.AST
