@@ -48,3 +48,38 @@ join (Const a) (Const b) =
 -- No difference between widen and join in this domain
 widen :: Var -> Var -> Var
 widen a b = join a b
+
+add :: Var -> Var -> Var
+add Bottom _            = Bottom
+add _ Bottom            = Bottom
+add Top _               = Top
+add _ Top               = Top
+add (Const a) (Const b) = Const (a + b)
+
+sub :: Var -> Var -> Var
+sub Bottom _            = Bottom
+sub _ Bottom            = Bottom
+sub Top _               = Top
+sub _ Top               = Top
+sub (Const a) (Const b) = Const (a - b)
+
+mul :: Var -> Var -> Var
+mul Bottom _            = Bottom
+mul _ Bottom            = Bottom
+mul Top _               = Top
+mul _ Top               = Top
+mul (Const a) (Const b) = Const (a * b)
+
+div :: Var -> Var -> Var
+div Bottom _            = Bottom
+div _ Bottom            = Bottom
+div Top _               = Top
+div _ Top               = Top
+div (Const a) (Const b) = Const (a / b)
+
+mod :: Var -> Var -> Var
+mod Bottom _            = Bottom
+mod _ Bottom            = Bottom
+mod Top _               = Top
+mod _ Top               = Top
+mod (Const a) (Const b) = Const (a `mod` b)

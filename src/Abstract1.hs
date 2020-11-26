@@ -7,10 +7,6 @@ import           Apron.Linexpr1
 import           Apron.Tcons1
 import           Apron.Texpr1
 import           Control.Monad.State.Strict
-import           Foreign                    hiding (addForeignPtrFinalizer,
-                                             void)
-import           Foreign.Concurrent
-import           Foreign.ForeignPtr.Unsafe
 
 type VarMap = M.Map VarName Var
 
