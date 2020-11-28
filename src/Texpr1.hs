@@ -5,7 +5,7 @@ import           Control.Monad.State.Strict (liftIO)
 
 type Value = Int
 
-data Texpr1 = Const Value
+data Texpr1 = Cst Value
             | Var VarName
             | UnOp OpType Texpr1
             | BinOp OpType Texpr1 Texpr1
@@ -15,7 +15,7 @@ data Texpr1 = Const Value
 
 texprMakeConstant :: Value -> Abstract Texpr1
 texprMakeConstant v = do
-  return (Const v)
+  return (Cst v)
 
 texprMakeLeafVar :: VarName -> Abstract Texpr1
 texprMakeLeafVar v = do

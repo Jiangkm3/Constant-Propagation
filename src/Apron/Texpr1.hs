@@ -25,5 +25,5 @@ data RoundingDir = ROUND_NEAREST
                  | ROUND_UP
                  | ROUND_DOWN
                  | ROUND_ALL
-                 | ROUND_DO_NOT_USE_0
+                 | ROUND_DO_NOT_USE_1
   deriving (Eq, Show)

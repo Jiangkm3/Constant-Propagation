@@ -18,9 +18,8 @@ library
     Texpr1
     Tcons1
     Apron.Var
-    Apron.Environment
-    Apron.Scalar
     Apron.Lincons1
+	Apron.Texpr1
   hs-source-dirs:
     src
   ghc-options: -Wall

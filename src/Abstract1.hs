@@ -1,12 +1,12 @@
 module Abstract1  where
 import           AbstractMonad
 import           Apron.Var
-import           Apron.Interval
 import           Apron.Lincons1
-import           Apron.Linexpr1
-import           Apron.Tcons1
 import           Apron.Texpr1
+import           Tcons1
+import           Texpr1
 import           Control.Monad.State.Strict
+import qualified Data.Map as M
 
 type VarMap = M.Map VarName Var
 
@@ -22,21 +22,21 @@ abstractBottom :: Abstract Abstract1
 abstractBottom = do
   (Env vs) <- gets unEnvironment
   -- No need to initialize the mapping since Bottom is a placeholder anyways
-  let abs = M.Empty
+  let abs = M.empty
   return (Abs1 abs True)
 
 abstractTop :: Abstract Abstract1
 abstractTop = do
-  (Enc vs) <- gets unEnvironment
-  let abs = fromList (map (\a -> (a, Top) vs ))
+  (Env vs) <- gets unEnvironment
+  let abs = M.fromList (map (\a -> (a, Top)) vs)
   return (Abs1 abs False)
 
 -- Printing
 
-abstractPrint :: Abstract1 -> Abstract ()
-abstractPrint a = do
-  man <- getManager
-  liftIO $ printAbstract1 man a
+-- abstractPrint :: Abstract1 -> Abstract ()
+-- abstractPrint a = do
+--   man <- getManager
+--   liftIO $ printAbstract1 man a
 
 -- Tests
 
@@ -47,7 +47,7 @@ abstractIsBottom (Abs1 _ bot) = do
 -- Every Variable is Top
 abstractIsTop :: Abstract1 -> Abstract Bool
 abstractIsTop (Abs1 vs bot) = do
-  it = foldl (and) True (map (\a -> isTop a) vs)
+  let it = foldl (&&) True (M.map (\a -> (isTop a)) vs)
   case (it, bot) of
     (_    , True)  -> return False
     (True , False) -> return True
@@ -59,51 +59,100 @@ abstractIsLeq :: Abstract1 -> Abstract1 -> Abstract Bool
 abstractIsLeq (Abs1 _ True) _ = return True
 abstractIsLeq _ (Abs1 _ True) = return False
 abstractIsLeq (Abs1 vs1 _) (Abs1 vs2 _) = do
-  nvs = intersectionWith isLeq vs1 vs2
-  return (foldl and True nvs)
+  let nvs = M.intersectionWith isLeq vs1 vs2
+  return (M.foldl (&&) True nvs)
 
 -- Again, assume that the variables are the same.
 abstractIsEq :: Abstract1 -> Abstract1 -> Abstract Bool
 abstractIsEq (Abs1 _ True) (Abs1 _ True) = return True
-abstractIsEq (Abs1 vs1 False) (Abs vs2 False) = do
-  nvs = intersectionWith isEq vs1 vs2
-  return (foldl and True nvs)
+abstractIsEq (Abs1 vs1 False) (Abs1 vs2 False) = do
+  let nvs = M.intersectionWith isEq vs1 vs2
+  return (M.foldl (&&) True nvs)
 abstractIsEq _ _ = return False
 
 -- Operations
 
 -- | Meet of two abstract values.
 abstractMeet :: Abstract1 -> Abstract1 -> Abstract Abstract1
-abstractMeet (Abs1 _ True) _           = return (Abs1 M.Empty True)
-abstractMeet _ (Abs1 _ True)           = return (Abs1 M.Empty True)
-abstractMeet (Abs1 vs1 _) (Abs1 vs2 _) =
-  nvs = unionWith meet vs1 vs2
+abstractMeet (Abs1 _ True) _           = return (Abs1 M.empty True)
+abstractMeet _ (Abs1 _ True)           = return (Abs1 M.empty True)
+abstractMeet (Abs1 vs1 _) (Abs1 vs2 _) = do
+  let nvs = M.unionWith absMeet vs1 vs2
   return (Abs1 nvs False)
 
 -- | Join of two abstract values.
 abstractJoin :: Abstract1 -> Abstract1 -> Abstract Abstract1
 abstractJoin (Abs1 _ True) a           = return a
 abstractJoin a (Abs1 _ True)           = return a
-abstractJoin (Abs1 vs1 _) (Abs1 vs2 _) =
-  nvs = unionWith join vs1 vs2
+abstractJoin (Abs1 vs1 _) (Abs1 vs2 _) = do
+  let nvs = M.unionWith absJoin vs1 vs2
   return (Abs1 nvs False)
 
-abstractTconsArrayMeet :: Abstract1 -> Tcons1Array -> Abstract Abstract1
-abstractTconsArrayMeet a arr = do
-  man <- getManager
-  liftIO $ apAbstract1MeetTconsArrayWrapper man False a arr
+abstractTconsMeet :: Abstract1 -> Tcons1 -> Abstract Abstract1
+-- We have to deal the case of EQ separately
+-- Because in EQ, we might obtain some additional information of the variable
+-- e.g. from a + 3 = 5 we can obtain that a = 2
+-- abstractTconsMeet a (Tcons1 CONS_EQ texpr s) = do
+abstractTconsMeet a (Tcons1 op texpr s) = do
+  v <- abstractTexprSolve a texpr
+  case (constypEval op v s) of
+    True  -> return a
+    False -> return (Abs1 M.empty True)
 
 abstractWiden :: Abstract1 -> Abstract1 -> Abstract Abstract1
 abstractWiden (Abs1 _ True) a           = return a
 abstractWiden a (Abs1 _ True)           = return a
-abstractWiden (Abs1 vs1 _) (Abs1 vs2 _) =
-  nvs = unionWith widen vs1 vs2
+abstractWiden (Abs1 vs1 _) (Abs1 vs2 _) = do
+  let nvs = M.unionWith widen vs1 vs2
   return (Abs1 nvs False)
 
 -- | Assign a list of variables in the abstract domain to the evaluation
 -- a tree expression
-abstractAssignTexprArray :: Abstract1 -> [VarName] -> Texpr1 -> Word32 -> Abstract1 -> Abstract Abstract1
-abstractAssignTexprArray a1 vs texpr size a2 = do
-  man <- getManager
-  var <- getVar (vs !! 0)
-  liftIO $ apAbstract1AssignTexprArrayWrapper man False a1 var texpr (fromIntegral size) a2
+abstractAssignTexprArray :: Abstract1 -> [VarName] -> Texpr1 -> Int -> Abstract1 -> Abstract Abstract1
+abstractAssignTexprArray (Abs1 _ True) _ _ _ _ = do
+  return (Abs1 M.empty True)
+abstractAssignTexprArray a@(Abs1 vm _) (var:_) texpr size _ = do
+  v <- abstractTexprSolve a texpr
+  -- The only way for v to be Bottom is that a variable is unreachable,
+  -- and the only way a variable is unreachable is for the whole thing to
+  -- be unreachable, which is dealt with in the previous case
+  let nvm = M.insert var v vm
+  case v of
+    Bottom -> error "Invalid Texpr"
+    _      -> return (Abs1 nvm False)
+
+-- | Helper Function
+
+abstractTexprSolve :: Abstract1 -> Texpr1 -> Abstract Var
+abstractTexprSolve (Abs1 _ True) t = return Bottom
+abstractTexprSolve (Abs1 vm _) (Var v) = do
+  case M.lookup v vm of
+    Nothing  -> error "Variable does not exist"
+    Just var -> return var
+abstractTexprSolve _ (Cst c) = do
+  return (Const c)
+abstractTexprSolve a (UnOp op texpr) = do
+  t <- abstractTexprSolve a texpr
+  let v = (unOpTransl op) t
+  return v
+abstractTexprSolve a (BinOp op texpr1 texpr2) = do
+  t1 <- abstractTexprSolve a texpr1
+  t2 <- abstractTexprSolve a texpr2
+  let v = (binOpTransl op) t1 t2
+  return v
+
+binOpTransl :: OpType -> (Var -> Var -> Var)
+binOpTransl op =
+  case op of
+    ADD_OP -> absAdd
+    SUB_OP -> absSub
+    MUL_OP -> absMul
+    DIV_OP -> absDiv
+    MOD_OP -> absMod
+    _      -> error "Unsupported or invalid binary operation"
+
+unOpTransl :: OpType -> (Var -> Var)
+unOpTransl op =
+  case op of
+    NEG_OP -> absNeg
+    _      -> error "Unsupported or invalid unary operation"

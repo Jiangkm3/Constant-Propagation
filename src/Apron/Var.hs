@@ -25,61 +25,65 @@ isEq Top Top             = True
 isEq (Const _) (Const _) = True
 isEq _ _                 = False
 
-meet :: Var -> Var -> Var
-meet Bottom _            = Bottom
-meet _ Bottom            = Bottom
-meet Top a               = a
-meet a Top               = a
-meet (Const a) (Const b) =
+absMeet :: Var -> Var -> Var
+absMeet Bottom _            = Bottom
+absMeet _ Bottom            = Bottom
+absMeet Top a               = a
+absMeet a Top               = a
+absMeet (Const a) (Const b) =
   case (a == b) of
     True  -> Const a
     False -> Bottom
 
-join :: Var -> Var -> Var
-join Bottom a            = a
-join a Bottom            = a
-join Top _               = Top
-join _ Top               = Top
-join (Const a) (Const b) =
+absJoin :: Var -> Var -> Var
+absJoin Bottom a            = a
+absJoin a Bottom            = a
+absJoin Top _               = Top
+absJoin _ Top               = Top
+absJoin (Const a) (Const b) =
   case (a == b) of
     True  -> Const a
     False -> Top
 
--- No difference between widen and join in this domain
+-- No difference between widen and absJoin in this domain
 widen :: Var -> Var -> Var
-widen a b = join a b
+widen a b = absJoin a b
 
-add :: Var -> Var -> Var
-add Bottom _            = Bottom
-add _ Bottom            = Bottom
-add Top _               = Top
-add _ Top               = Top
-add (Const a) (Const b) = Const (a + b)
+absAdd :: Var -> Var -> Var
+absAdd Bottom _            = Bottom
+absAdd _ Bottom            = Bottom
+absAdd Top _               = Top
+absAdd _ Top               = Top
+absAdd (Const a) (Const b) = Const (a + b)
 
-sub :: Var -> Var -> Var
-sub Bottom _            = Bottom
-sub _ Bottom            = Bottom
-sub Top _               = Top
-sub _ Top               = Top
-sub (Const a) (Const b) = Const (a - b)
+absSub :: Var -> Var -> Var
+absSub Bottom _            = Bottom
+absSub _ Bottom            = Bottom
+absSub Top _               = Top
+absSub _ Top               = Top
+absSub (Const a) (Const b) = Const (a - b)
 
-mul :: Var -> Var -> Var
-mul Bottom _            = Bottom
-mul _ Bottom            = Bottom
-mul Top _               = Top
-mul _ Top               = Top
-mul (Const a) (Const b) = Const (a * b)
+absMul :: Var -> Var -> Var
+absMul Bottom _            = Bottom
+absMul _ Bottom            = Bottom
+absMul Top _               = Top
+absMul _ Top               = Top
+absMul (Const a) (Const b) = Const (a * b)
 
-div :: Var -> Var -> Var
-div Bottom _            = Bottom
-div _ Bottom            = Bottom
-div Top _               = Top
-div _ Top               = Top
-div (Const a) (Const b) = Const (a / b)
+absDiv :: Var -> Var -> Var
+absDiv Bottom _            = Bottom
+absDiv _ Bottom            = Bottom
+absDiv Top _               = Top
+absDiv _ Top               = Top
+absDiv (Const a) (Const b) = Const (a `div` b)
 
-mod :: Var -> Var -> Var
-mod Bottom _            = Bottom
-mod _ Bottom            = Bottom
-mod Top _               = Top
-mod _ Top               = Top
-mod (Const a) (Const b) = Const (a `mod` b)
+absMod :: Var -> Var -> Var
+absMod Bottom _            = Bottom
+absMod _ Bottom            = Bottom
+absMod Top _               = Top
+absMod _ Top               = Top
+absMod (Const a) (Const b) = Const (a `mod` b)
+
+absNeg :: Var -> Var
+absNeg (Const a) = Const (-a)
+absNeg a         = a

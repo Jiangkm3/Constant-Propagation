@@ -14,7 +14,6 @@ import Operation
 import Types
 import Texpr1
 import Tcons1
-import Loop
 import Abstract1
 import AbstractMonad
 import Language.C.Data.Ident
@@ -320,18 +319,6 @@ evalExpr a f (CConst (CIntConst n _)) = do
 
 evalExpr a f (CBinary bop expr1 expr2 _)
   | isBOpCons bop = error "Boolean evaluation not supported"
-{-
-  | isBOpCons bop = do
-    (ltexpr, lpair) <- evalExpr a f expr1
-    (rtexpr, rpair) <- evalExpr a f expr2
-    ncons <- evalBOpCons bop ltexpr rtexpr
-    arr <- tconsArrayMake 1
-    tconsArraySetIndex arr 0 ncons
-    abs <- abstractTconsArrayMeet a arr
-    b <- abstractIsBottom abs
-    ntexpr <- texprMakeConstant $ ScalarVal $ IntValue $ (1 - evalBool b)
-    return (ntexpr, lpair ++ rpair)
--}
   | isBOpLogic bop = error "Boolean evaluation not supported"
   | otherwise = do
     (ltexpr, lpair) <- evalExpr a f expr1
@@ -379,11 +366,9 @@ evalCons a f (CBinary bop expr1 expr2 _) neg
   | isBOpCons bop = do
     (ltexpr, lpair) <- evalExpr a f expr1
     (rtexpr, rpair) <- evalExpr a f expr2
-    lAbs <- foldl absAssgHelper (return a) (lpair ++ rpair)
+    lAbs   <- foldl absAssgHelper (return a) (lpair ++ rpair)
     ntcons <- evalBOpCons bop ltexpr rtexpr neg
-    arr <- tconsArrayMake 1
-    tconsArraySetIndex arr 0 ntcons
-    nAbs <- abstractTconsArrayMeet lAbs arr
+    nAbs   <- abstractTconsMeet lAbs ntcons
     return nAbs
   | (isBOpLogic bop) && (not neg) = do
     lAbs <- evalCons a f expr1 False
@@ -402,48 +387,3 @@ evalCons a f (CUnary uop expr _) neg
   | uop == CNegOp = evalCons a f expr (not neg)
   | otherwise     = error "Int to Bool Conversion not supported"  
 evalCons a f _ _ = error "Int to Bool Conversion not supported"
-
-
-{- Extra Modules -}
-{-
--- We deal with delayed narrowing in this function.
--- The goal is to estimate the number of iterations a loop will execute
--- The output number n indicates that the number of iteration we would join the
--- states before doing the widening
--- n == 0  indicates that the loop is nonterm
--- n == -1 indicates that it will not be executed
--- n == -2 indicates that we cannot bound the iteration number
-evalIteration :: Abstract1 -> String -> (Either (Maybe (CExpression AbsState)) (CDeclaration AbsState)) -> Maybe (CExpression AbsState) -> Maybe (CExpression AbsState) -> CStatement AbsState -> Abstract Integer
--- If there's no condition, then the loop is non-term
-evalIteration _ _ _ Nothing _ _ = return 0
--- If the condition is a const, then the loop either is non-term or never executed
-evalIteration _ _ _ (Just (CConst (CIntConst cint _))) _ _ =
-  case (getCInteger cint) of
-    0 ->  return (-1)
-    _ ->  return 0
-evalIteration pre f init (Just cond) step stmt = do
-  a <- evalCons pre f cond False
-  b <- abstractIsBottom a
-  case b of
-    -- The loop will not be executed if the condition is false
-    True -> return (-1)
-    False -> getIterationNum pre f init cond step stmt
--}
-
-evalLAST :: Abstract1 -> LoopAST -> Abstract Abstract1
-evalLAST a LNull = return a
-evalLAST a (LTcons tcons) = do
-  arr <- tconsArrayMake 1
-  tconsArraySetIndex arr 0 tcons
-  nAbs <- abstractTconsArrayMeet a arr
-  return nAbs
-evalLAST a (LAnd ast1 ast2) = do
-  lAbs <- evalLAST a ast1
-  rAbs <- evalLAST a ast2
-  abstractMeet lAbs rAbs
-evalLAST a (LNot ast) = error "Not constraint not implemneted"
-evalLAST a (LOr ast1 ast2) = do
-  lAbs <- evalLAST a ast1
-  rAbs <- evalLAST a ast2
-  abstractJoin lAbs rAbs
-
