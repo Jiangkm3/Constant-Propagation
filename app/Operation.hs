@@ -5,9 +5,8 @@ module Operation where
 import AbstractMonad
 import Texpr1
 import Tcons1
-import Types
-import Apron.Scalar
 import Apron.Lincons1
+import Apron.Texpr1
 import Language.C.Syntax.AST
 import Control.Monad.State.Strict (liftIO)
 
@@ -28,22 +27,16 @@ evalBOpCons bop t1 t2 neg
   -- For form a < b, we need to convert to (b - a) > 0
   | (nbop == CLeOp) || (nbop == CLeqOp) = do
     l <- texprMakeBinOp SUB_OP t2 t1 ROUND_INT ROUND_DOWN
-    r <- liftIO $ constrScalar 0
+    let r = 0
     n <- tconsMake (evalConsBOp nbop) l r
     return n
   -- If the operation is not a constraint, evalConsBOp would throw an error
   | otherwise = do
     l <- texprMakeBinOp SUB_OP t1 t2 ROUND_INT ROUND_DOWN
-    r <- liftIO $ constrScalar 0
+    let r = 0
     n <- tconsMake (evalConsBOp nbop) l r
     return n
   where nbop = negConsBOp bop neg
-
-constrScalar :: Int -> IO Scalar
-constrScalar n = do
-  s <- apScalarAlloc
-  apScalarSetInt s 0
-  return s
 
 {- Simple BOp Case -}
 -- True if bop has an APRON correspondence
@@ -118,7 +111,7 @@ evalUOpExpr uop r
   | isIncDec uop   = evalIncDec uop r
   | uop == CPlusOp = return r
   | uop == CMinOp  = do
-    l <- texprMakeConstant $ ScalarVal $ IntValue $ -1
+    l <- texprMakeConstant (-1)
     n <- texprMakeBinOp MUL_OP l r ROUND_INT ROUND_DOWN
     return n
   | otherwise      = error "Not Implemented"
@@ -147,7 +140,7 @@ evalUOp uop =
 
 evalIncDec :: CUnaryOp -> Texpr1 -> Abstract Texpr1
 evalIncDec uop l = do
-  r <- texprMakeConstant $ ScalarVal $ IntValue $ 1
+  r <- texprMakeConstant 1
   n <- texprMakeBinOp (evalUOp uop) l r ROUND_INT ROUND_DOWN
   return n
 

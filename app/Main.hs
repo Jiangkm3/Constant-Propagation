@@ -5,7 +5,7 @@ import Eval
 import Printer
 
 main = do
-  let fileName = "/home/jiangkm3/peppersieve/app/test.c"
+  let fileName = "/home/jiangkm3/Constant-Propagation/app/test.c"
   iast <- analyzeAST fileName
   let nast = evalProg iast
   initPrinter nast fileName

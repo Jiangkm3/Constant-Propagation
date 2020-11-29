@@ -1,7 +1,6 @@
 module Abstract1  where
 import           AbstractMonad
 import           Apron.Var
-import           Apron.Lincons1
 import           Apron.Texpr1
 import           Tcons1
 import           Texpr1
@@ -20,7 +19,6 @@ data Abstract1 = Abs1 VarMap Bool
 
 abstractBottom :: Abstract Abstract1
 abstractBottom = do
-  (Env vs) <- gets unEnvironment
   -- No need to initialize the mapping since Bottom is a placeholder anyways
   let abs = M.empty
   return (Abs1 abs True)
@@ -33,10 +31,26 @@ abstractTop = do
 
 -- Printing
 
--- abstractPrint :: Abstract1 -> Abstract ()
--- abstractPrint a = do
---   man <- getManager
---   liftIO $ printAbstract1 man a
+abstractPrint :: Abstract1 -> Abstract ()
+abstractPrint a = do
+  liftIO $ printAbstract1 a
+
+printAbstract1 :: Abstract1 -> IO ()
+printAbstract1 (Abs1 _ True) = do
+  putStrLn "Variables: "
+  putStrLn "  Unreachable"
+printAbstract1 (Abs1 vm _) = do
+  putStrLn "Variables: "
+  printAbsLst (M.toAscList vm)
+
+printAbsLst :: [(String, Var)] -> IO ()
+printAbsLst [] = return ()
+printAbsLst ((s, v):ls) = do
+  case v of
+    Top     -> putStrLn ("  " ++ s ++ ": Top")
+    Bottom  -> putStrLn ("  " ++ s ++ ": Bottom")
+    Const c -> putStrLn ("  " ++ s ++ ": " ++ (show c))
+  printAbsLst ls
 
 -- Tests
 
@@ -89,7 +103,7 @@ abstractJoin (Abs1 vs1 _) (Abs1 vs2 _) = do
   return (Abs1 nvs False)
 
 abstractTconsMeet :: Abstract1 -> Tcons1 -> Abstract Abstract1
--- We have to deal the case of EQ separately
+-- TODO: We have to deal the case of EQ separately
 -- Because in EQ, we might obtain some additional information of the variable
 -- e.g. from a + 3 = 5 we can obtain that a = 2
 -- abstractTconsMeet a (Tcons1 CONS_EQ texpr s) = do

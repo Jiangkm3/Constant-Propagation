@@ -3,7 +3,6 @@ name:           constant-propagation
 version:        1.0.0
 build-type:     Configure
 extra-source-files:
-    autoconf.ac
     configure
     README.md
 
@@ -11,7 +10,7 @@ source-repository head
   type: git
   location: https://github.com/Jiangkm3/Constant-Propagation
 
-library
+library const-prop
   exposed-modules:
     AbstractMonad
     Abstract1
@@ -19,28 +18,30 @@ library
     Tcons1
     Apron.Var
     Apron.Lincons1
-	Apron.Texpr1
+    Apron.Texpr1
   hs-source-dirs:
     src
-  ghc-options: -Wall
-    base >=4.7 && <5
+  build-depends:
+      mtl >=2.2.2
+    , containers >=0.6.2.1
+    , base >=4.7 && <5
   default-language: Haskell2010
 
 executable constant-propagation-exe
   main-is: Main.hs
   other-modules:
-      Eval
-      Init
-      Loop
-      Operation
-      Parser
-      Printer
-      Symbol
+    Eval
+    Init
+    Operation
+    Parser
+    Printer
+    Symbol
   hs-source-dirs:
-      app
+    app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      language-c
+      const-prop
+    , language-c
     , pretty
     , containers >=0.6.2.1
     , mtl >=2.2.2                

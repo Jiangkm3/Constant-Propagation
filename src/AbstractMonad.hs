@@ -35,6 +35,9 @@ newtype Abstract a = Abstract { unAbstractState :: StateT AbstractState IO a }
 evalAbstract :: AbstractState -> Abstract a -> IO a
 evalAbstract aState act = evalStateT (unAbstractState act) aState
 
+defaultState :: AbstractState
+defaultState = AbstractState Constants undefined
+
 getDomain :: Abstract Domain
 getDomain = gets unDomain
 

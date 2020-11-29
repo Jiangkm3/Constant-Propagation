@@ -12,7 +12,7 @@ import Control.Monad.State.Strict (liftIO)
 initPrinter :: Abstract (CTranslationUnit AbsState) -> String -> IO ()
 initPrinter atu name = evalAbstract defaultState $ do
   symT <- liftIO $ getSymT name
-  initAbstractState Intervals symT []
+  initAbstractState Constants symT []
   tu <- atu
   printTU tu
 

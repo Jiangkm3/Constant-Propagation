@@ -11,7 +11,6 @@ module Eval where
 import GHC.Int
 import Init
 import Operation
-import Types
 import Texpr1
 import Tcons1
 import Abstract1
@@ -149,7 +148,7 @@ evalLoop lastAbs f forStmt@(CFor init bound step stmt st) n = do
     Nothing   -> return lastAbs
     Just cond -> evalCons lastAbs f cond False
   (ltAbs, nStmt) <- evalStmt itAbs f stmt
-  dummyTexpr <- texprMakeConstant $ ScalarVal $ IntValue 0
+  dummyTexpr <- texprMakeConstant 0
   (_, pair) <- case step of
     Nothing   -> return (dummyTexpr, [])
     Just expr -> evalExpr ltAbs f expr
@@ -175,7 +174,7 @@ evalNarrow :: Abstract1 -> String -> CExpression AbsState -> CStatement AbsState
 evalNarrow lastAbs f cond stmt step = do
   iAbs      <- evalCons lastAbs f cond False
   (lAbs, _) <- evalStmt iAbs f stmt
-  dummyTexpr <- texprMakeConstant $ ScalarVal $ IntValue 0
+  dummyTexpr <- texprMakeConstant 0
   (_, pair)  <- case step of
     Nothing   -> return (dummyTexpr, [])
     Just expr -> evalExpr lAbs f expr
@@ -314,7 +313,7 @@ evalExpr a f (CVar (Ident v _ _) _) = do
   return (ntexpr, [])
 
 evalExpr a f (CConst (CIntConst n _)) = do
-  ntexpr <- texprMakeConstant $ ScalarVal $ IntValue $ (fromInteger (getCInteger n) :: Int32)
+  ntexpr <- texprMakeConstant (fromInteger (getCInteger n))
   return (ntexpr, [])
 
 evalExpr a f (CBinary bop expr1 expr2 _)

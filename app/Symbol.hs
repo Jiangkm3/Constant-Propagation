@@ -29,7 +29,7 @@ genSymT (raw:raws) prefix =
     -- use func@var to declare local variable
     '{' -> genSymT raws ((init raw) ++ "@")
     -- use function name to indicate the return value of that function
-	-- since identifier names cannot repeat
+    -- since identifier names cannot repeat
     '}' -> [init raw] ++ genSymT raws ""
     -- use original name for global variables
     _   -> [prefix ++ raw] ++ (genSymT raws prefix)
