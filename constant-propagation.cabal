@@ -36,6 +36,7 @@ executable constant-propagation-exe
     Parser
     Printer
     Symbol
+    Unroll
   hs-source-dirs:
     app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N

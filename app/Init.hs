@@ -4,6 +4,7 @@ import           Language.C.Data.Node
 import           Language.C.Syntax.AST
 import           Parser
 import           Symbol
+import           Unroll
 import           Abstract1
 import           AbstractMonad
 
@@ -33,7 +34,10 @@ analyzeAST name = do
   symT <- getSymT name
   let abs1 = astHelper symT
   tu <- parseC name
-  let initS = initTo abs1 tu
+  -- unroll the loop
+  let ntu = unrollLoop tu 1000
+
+  let initS = initTo abs1 ntu
   return initS
 
 astHelper :: [String] -> Abstract Abstract1
