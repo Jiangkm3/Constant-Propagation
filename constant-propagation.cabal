@@ -30,6 +30,7 @@ library const-prop
 executable constant-propagation-exe
   main-is: Main.hs
   other-modules:
+    Array
     Eval
     Init
     Operation

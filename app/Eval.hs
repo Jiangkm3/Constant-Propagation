@@ -45,13 +45,24 @@ evalEDLst a (ed:eds) = do
   return ([newED] ++ nextEDs)
 
 evalExtDecl :: Abstract1 -> CExternalDeclaration AbsState -> Abstract (Abstract1, CExternalDeclaration AbsState)
-evalExtDecl abs (CDeclExt a) = do
-  (nAbs, nDecl) <- evalDecl abs "" a
+evalExtDecl abs (CDeclExt decl) = do
+  (nAbs, nDecl) <- evalDecl abs "" decl
   return (nAbs, CDeclExt nDecl)
-evalExtDecl abs (CFDefExt a) = do
-  (nAbs, nFunc) <- evalFunc abs a
-  return (nAbs, CFDefExt nFunc)
-evalExtDecl abs _            = error "CAsmExt not Implemented"
+evalExtDecl abs de@(CFDefExt func@(CFunDef _ declr _ _ _))
+  | isMainFunc declr = do
+    (nAbs, nFunc) <- evalFunc abs func
+    return (nAbs, CFDefExt nFunc)
+  -- If not the main function, simply skip it
+  | otherwise = return (abs, de)
+evalExtDecl abs _            = error "CAsmExt not implemented"
+
+-- Helper Function to determine if the function is the main function
+isMainFunc :: CDeclarator a -> Bool
+isMainFunc (CDeclr (Just (Ident f _ _)) _ _ _ _) =
+  case f of
+    "main" -> True
+    _      -> False
+isMainFunc _ = False
 
 -----
 
@@ -123,7 +134,6 @@ evalCBIs abs f (cbi:cbis) = do
   (nextAbs, nCbi)   <- evalCBI abs f cbi
   (finalAbs, fCbis) <- evalCBIs nextAbs f cbis
   return (finalAbs, [nCbi] ++ fCbis)
-  
 
 -- The integer is the iteration bound
 -- i.e. how many more iterations until we do the widening
@@ -297,21 +307,25 @@ type ExprSt = (Texpr1, [(VarName, Texpr1)])
 -- i.e. evaluate the constraint and return 0 or 1 based on result
 evalExpr :: Abstract1 -> String -> CExpression AbsState -> Abstract ExprSt
 
-evalExpr a f (CAssign CAssignOp (CVar (Ident v _ _) _) rhs _) = do
+evalExpr a f (CAssign CAssignOp expr rhs _) = do
   -- Technically ++a would be different but ignore it for now
-  var <- findScope v f
+  tvar <- case expr of
+           CVar (Ident v _ _) _ -> return v
+           CIndex _ _ _         -> evalIndex a expr
+           _ -> error "Unsupported Assignment Operation"
+  var <- findScope tvar f
   (rtexpr, rpair) <- evalExpr a f rhs
   return (rtexpr, rpair ++ [(var, rtexpr)])
 
 evalExpr a f (CAssign aop (CVar (Ident v _ _) _) rhs _) = do
-  var <- findScope v f
+  var    <- findScope v f
   ltexpr <- texprMakeLeafVar var
   (rtexpr, rpair) <- evalExpr a f rhs
   ntexpr <- evalBOpExpr (convertAOp aop) ltexpr rtexpr
   return (ntexpr, rpair ++ [(var, ntexpr)])
 
 evalExpr a f (CVar (Ident v _ _) _) = do
-  var <- findScope v f
+  var    <- findScope v f
   ntexpr <- texprMakeLeafVar var
   return (ntexpr, [])
 
@@ -339,13 +353,33 @@ evalExpr a f e@(CUnary uop expr _) = do
     -- The Plus Operator literally does nothing
     _          -> return (ntexpr, rpair)
 
-evalExpr _ _ _ = error "expression not impemented"
+evalExpr a f e@(CIndex _ _ _) = do
+  v      <- evalIndex a e
+  var    <- findScope v f
+  ntexpr <- texprMakeLeafVar var
+  return (ntexpr, [])
+
+evalExpr _ _ e = error ("expression not implemented: " ++ (show e))
 
 evalBool :: Bool -> Int32
 evalBool b =
   case b of
     True  -> 1
     False -> 0
+
+-- Obtain the correct variable when given an array
+-- Scope is applied in evalExpr
+-- Assume that every index is an integer (not variable or expression)
+evalIndex :: Abstract1 -> CExpression AbsState -> Abstract String
+evalIndex a (CIndex l r _) = do
+  lst <- case l of
+           CIndex _ _ _ -> evalIndex a l
+           CVar (Ident v _ _) _ -> return v
+           _ -> error "Unsupported Array Index"
+  let rst = case r of
+           CConst (CIntConst (CInteger n _ _) _) -> "#" ++ (show n)
+           _ -> error "Unsupported Array Index"
+  return (lst ++ rst)
 
 -- A helper function to deal with ++ and --
 incDecHelper :: CExpression AbsState -> String -> CUnaryOp -> Texpr1 -> ExprSt -> Abstract ExprSt
@@ -387,5 +421,5 @@ evalCons a f (CBinary bop expr1 expr2 _) neg
   | otherwise     = error "Int to Bool Conversion not supported"
 evalCons a f (CUnary uop expr _) neg
   | uop == CNegOp = evalCons a f expr (not neg)
-  | otherwise     = error "Int to Bool Conversion not supported"  
+  | otherwise     = error "Int to Bool Conversion not supported"
 evalCons a f _ _ = error "Int to Bool Conversion not supported"

@@ -34,6 +34,8 @@ genSymT (raw:raws) prefix =
     -- use original name for global variables
     _   -> [prefix ++ raw] ++ (genSymT raws prefix)
 
+-- DO NOT USE THIS DIRECTLY
+-- Refer to getFullSymT in Init.hs instead
 -- Traverse through the syntax tree and generate symbol table
 getSymT :: String -> IO [String]
 getSymT path = do

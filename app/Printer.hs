@@ -3,7 +3,6 @@ module Printer where
 import Init
 import Abstract1
 import AbstractMonad
-import Symbol
 import Language.C.Data.Ident
 import Language.C.Syntax.AST
 import Language.C.Syntax.Constants
@@ -11,7 +10,7 @@ import Control.Monad.State.Strict (liftIO)
 
 initPrinter :: Abstract (CTranslationUnit AbsState) -> String -> IO ()
 initPrinter atu name = evalAbstract defaultState $ do
-  symT <- liftIO $ getSymT name
+  symT <- liftIO $ getFullSymT name
   initAbstractState Constants symT []
   tu <- atu
   printTU tu
@@ -148,6 +147,7 @@ printExpr (CAssign assop expr1 expr2 _) = "Assign: " ++ str1 ++ " " ++ strop ++ 
   where str1 = printExpr expr1
         strop = printAssop assop
         str2 = printExpr expr2
+printExpr (CIndex expr1 expr2 _) = "Array Item"
 printExpr _ = error "Expression Case Not Implemented"
 
 isPrefixOp :: CUnaryOp -> Bool

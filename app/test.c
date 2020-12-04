@@ -1,18 +1,12 @@
-void f(int m) {
-	m = 0;
+int a[3][2];
+
+int f() {
+	int b[3];
 }
 
 int main() {
-	int a = 0;
-	int b = 0;
-	int i = 0;
-	for (i = 0; i < 50; i++) {
-		a++;
-		b = 10;
-		do {
-			a++;
-			b--;
-		} while (b > 0);
-	}
+	int b[4][1];
+	a[0][0] = 0;
+	b[2][0] = 1;
 	return 1;
 }

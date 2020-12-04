@@ -5,6 +5,7 @@ import           Language.C.Syntax.AST
 import           Parser
 import           Symbol
 import           Unroll
+import           Array
 import           Abstract1
 import           AbstractMonad
 
@@ -28,15 +29,22 @@ toState = State
 initTo :: a -> CTranslUnit -> CTranslationUnit (State a)
 initTo abs1 t = toState abs1 <$> t
 
+-- Used to obtain full symbol list
+getFullSymT :: String -> IO [String]
+getFullSymT name = do
+  symT <- getSymT name
+  tu   <- parseC name
+  return (obtainArraySymT symT tu)
+
 -- Initialize everything to a start state and then print the AST
 analyzeAST :: String -> IO (CTranslationUnit AbsState)
 analyzeAST name = do
   symT <- getSymT name
-  let abs1 = astHelper symT
-  tu <- parseC name
+  tu   <- parseC name
+  let nSymT = obtainArraySymT symT tu
   -- unroll the loop
-  let ntu = unrollLoop tu 2
-
+  let ntu   = unrollLoop tu 2
+  let abs1  = astHelper nSymT
   let initS = initTo abs1 ntu
   return initS
 
