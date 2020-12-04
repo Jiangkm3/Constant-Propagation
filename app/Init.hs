@@ -35,14 +35,14 @@ analyzeAST name = do
   let abs1 = astHelper symT
   tu <- parseC name
   -- unroll the loop
-  let ntu = unrollLoop tu 1000
+  let ntu = unrollLoop tu 2
 
   let initS = initTo abs1 ntu
   return initS
 
 astHelper :: [String] -> Abstract Abstract1
 astHelper symT = do
-  initAbstractState Intervals symT []
+  initAbstractState Constants symT []
   abs <- abstractBottom
   return abs
 

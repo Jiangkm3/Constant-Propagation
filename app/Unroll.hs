@@ -85,4 +85,48 @@ clFor _ = error "Invalid for statement"
 -- Given an AST, unroll all while loops with bound n
 -- Assume no for or do-while loop
 unrollWhileLoop :: CTranslationUnit a -> Int -> CTranslationUnit a
-unrollWhileLoop (CTranslUnit extDecls a) n = CTranslUnit extDecls a
+unrollWhileLoop (CTranslUnit extDecls a) n = CTranslUnit nExtDecls a
+  where nExtDecls = map (\a -> ulExtDecl a n) extDecls
+
+ulExtDecl :: CExternalDeclaration a -> Int -> CExternalDeclaration a
+ulExtDecl (CDeclExt a) _ = CDeclExt a
+ulExtDecl (CFDefExt a) n = CFDefExt (ulFunc a n)
+ulExtDecl _ _            = error "CAsmExt not Implemented"
+
+ulFunc :: CFunctionDef a -> Int -> CFunctionDef a
+ulFunc (CFunDef a b c stmt d) n = CFunDef a b c nstmt d
+  where nstmt = ulStmt stmt n
+
+ulStmt :: CStatement a -> Int -> CStatement a
+ulStmt a@(CExpr _ _) _           = a
+ulStmt a@(CReturn _ _) _         = a
+ulStmt (CIf a tstmt fstmt b) n   = CIf a ntstmt nfstmt b
+  where ntstmt = ulStmt tstmt n
+        nfstmt = case fstmt of
+                   Nothing -> Nothing
+                   Just s  -> Just (ulStmt s n)
+-- evaluating inner loop before outer loop
+ulStmt (CWhile a stmt False b) n = ulWhile (CWhile a nstmt False b) n
+  where nstmt = ulStmt stmt n
+ulStmt (CWhile a stmt True b) _  = error "Do-while loops are not allowed in ul"
+ulStmt (CFor a b c stmt d) _     = error "For loops are not allowed in ul"
+ulStmt (CCompound a cbis b) n    = CCompound a ncbis b
+  where ncbis = map (\a -> ulCBI a n) cbis
+ulStmt _ _ = error "Statement type not implemented"
+
+ulCBI :: CCompoundBlockItem a -> Int -> CCompoundBlockItem a
+ulCBI (CBlockStmt stmt) n = CBlockStmt nStmt
+  where nStmt = ulStmt stmt n
+ulCBI (CBlockDecl decl) n = CBlockDecl decl
+ulCBI _ _ = error "CBI nested function type not implemented"
+
+ulWhile :: CStatement a -> Int -> CStatement a
+ulWhile stmt@(CWhile _ _ _ a) n = CCompound [] (ulWhileCBIs stmt n) a
+ulWhile _ _    = error "Invalid while statement"
+
+-- helper functions for while loops
+ulWhileCBIs :: CStatement a -> Int -> [CCompoundBlockItem a]
+ulWhileCBIs stmt 0 = []
+ulWhileCBIs wstmt@(CWhile cond stmt False a) n =
+  [(CBlockStmt (CIf cond stmt Nothing a))] ++ (ulWhileCBIs wstmt (n - 1))
+ulWhileCBIs _ _ = error "Invalid while statement"

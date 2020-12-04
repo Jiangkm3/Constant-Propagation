@@ -1,3 +1,7 @@
+void f(int m) {
+	m = 0;
+}
+
 int main() {
 	int a = 0;
 	int b = 0;

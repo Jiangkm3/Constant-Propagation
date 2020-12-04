@@ -38,7 +38,7 @@ evalProg (CTranslUnit extDecls (State a loc)) = do
   return (CTranslUnit nExtDecls nSt)
 
 evalEDLst :: Abstract1 -> [CExternalDeclaration AbsState] -> Abstract [CExternalDeclaration AbsState]
-evalEDLst _ []         = return []
+evalEDLst _ []       = return []
 evalEDLst a (ed:eds) = do
   (newAbs, newED) <- evalExtDecl a ed
   nextEDs <- evalEDLst newAbs eds
@@ -60,7 +60,7 @@ evalExtDecl abs _            = error "CAsmExt not Implemented"
 evalFunc :: Abstract1 -> CFunctionDef AbsState -> Abstract (Abstract1, CFunctionDef AbsState)
 evalFunc abs (CFunDef a b@(CDeclr (Just (Ident f _ _)) _ _ _ _) c stmt st) = do
   (nAbs, nStmt) <- evalStmt abs f stmt
-  let nSt = setAbs (return nAbs) st
+  nSt <- setAbs nAbs st
   return (nAbs, CFunDef a b c nStmt nSt)
 
 -----
@@ -79,7 +79,7 @@ absAssgHelper a (v, t) = do
 evalDecl :: Abstract1 -> String -> CDeclaration AbsState -> Abstract (Abstract1, CDeclaration AbsState)
 evalDecl abs f (CDecl a b st) = do
   nAbs <- foldl (\a b -> evalDeclHelper a f b) (return abs) b
-  let nSt = setAbs (return nAbs) st
+  nSt <- setAbs nAbs st
   return (nAbs, CDecl a b nSt)
 
 -- Process every variable declaration separately
@@ -100,8 +100,11 @@ evalDeclHelper _ _ _ = error "Declaration type not implemented"
 
 {- Statements -}
 -- helper function
-setAbs :: Abstract Abstract1 -> AbsState -> AbsState
-setAbs a (State _ loc) = State a loc
+setAbs :: Abstract1 -> AbsState -> Abstract AbsState
+setAbs newAbs (State a loc) = do
+  oldAbs <- a
+  abs <- abstractJoin oldAbs newAbs
+  return (State (return abs) loc)
 
 -- A helper function to evaluate compounds
 evalCBI :: Abstract1 -> String -> CCompoundBlockItem AbsState -> Abstract (Abstract1, CCompoundBlockItem AbsState)
@@ -134,7 +137,7 @@ evalLoop lastAbs f whileStmt@(CWhile cond stmt dw st) n = do
                       True  -> abstractWiden lastAbs ntAbs
                       False -> abstractJoin lastAbs ntAbs
   leqEval        <- abstractIsLeq nAbs lastAbs
-  let nSt = setAbs (return lastAbs) st
+  nSt <- setAbs lastAbs st
   case leqEval of
     True  -> return (lastAbs, CWhile cond nStmt dw nSt)
     False -> evalLoop nAbs f whileStmt (n - 1)
@@ -157,7 +160,7 @@ evalLoop lastAbs f forStmt@(CFor init bound step stmt st) n = do
                 True  -> abstractWiden lastAbs ntAbs
                 False -> abstractJoin lastAbs ntAbs
   leqEval  <- abstractIsLeq nAbs lastAbs
-  let nSt = setAbs (return lastAbs) st
+  nSt <- setAbs lastAbs st
   case leqEval of
     True  -> return (lastAbs, CFor init bound step nStmt nSt)
     False -> evalLoop nAbs f forStmt (n - 1)
@@ -186,31 +189,31 @@ evalStmt :: Abstract1 -> String -> CStatement AbsState -> Abstract (Abstract1, C
 
 -- Expression Statements
 evalStmt a _ (CExpr Nothing st) = do
-  let nSt = setAbs (return a) st
+  nSt <- setAbs a st
   return (a, CExpr Nothing nSt)
 -- We can disregard the side effect of the expression
 evalStmt a f (CExpr (Just expr) st) = do
   (_, pair) <- evalExpr a f expr
   nAbs <- foldl absAssgHelper (return a) pair
-  let nSt = setAbs (return nAbs) st
+  nSt <- setAbs nAbs st
   return (nAbs, CExpr (Just expr) nSt)
 
 -- Return Statements
 -- Assume for now that nothing will be behind the return statement
 evalStmt a _ (CReturn Nothing st) = do
-  let nSt = setAbs (return a) st
+  nSt <- setAbs a st
   return (a, CReturn Nothing nSt)
 evalStmt a f (CReturn (Just expr) st) = do
   (texpr, pair) <- evalExpr a f expr
   let npair = pair ++ [(f, texpr)]
   nAbs <- foldl absAssgHelper (return a) npair
-  let nSt = setAbs (return nAbs) st
+  nSt <- setAbs nAbs st
   return (nAbs, CReturn (Just expr) nSt)
 
 -- Compound Statments
 evalStmt a f (CCompound ids cbis st) = do
   (nAbs, ncbis) <- evalCBIs a f cbis
-  let nSt = setAbs (return nAbs) st
+  nSt <- setAbs nAbs st
   return (nAbs, CCompound ids ncbis nSt)
 
 -- If Statements
@@ -219,7 +222,7 @@ evalStmt a f (CIf cons tstmt Nothing st) = do
   (ntAbs, ntStmt) <- evalStmt itAbs f tstmt
   nfAbs           <- evalCons a f cons True
   nAbs            <- abstractJoin ntAbs nfAbs
-  let nSt = setAbs (return nAbs) st
+  nSt <- setAbs nAbs st
   return (nAbs, CIf cons ntStmt Nothing nSt)
 evalStmt a f (CIf cons tstmt (Just fstmt) st) = do
   itAbs           <- evalCons a f cons False
@@ -227,7 +230,7 @@ evalStmt a f (CIf cons tstmt (Just fstmt) st) = do
   (ntAbs, ntStmt) <- evalStmt itAbs f tstmt
   (nfAbs, nfStmt) <- evalStmt ifAbs f fstmt
   nAbs            <- abstractJoin ntAbs nfAbs
-  let nSt = setAbs (return nAbs) st
+  nSt <- setAbs nAbs st
   return (nAbs, CIf cons ntStmt (Just nfStmt) nSt)
 
 -- Loops
@@ -245,7 +248,7 @@ evalStmt abs f whileStmt@(CWhile cond stmt dw st) = do
   -- Now deal with the case where the loop will not be executed
   rAbs <- evalCons abs f cond True
   finalAbs <- abstractJoin lAbs rAbs
-  let fSt = setAbs (return finalAbs) nSt
+  fSt <- setAbs finalAbs nSt
   return (finalAbs, (CWhile cond nStmt dw fSt))
 
 -- We want to deal with init in the for loop
@@ -263,7 +266,7 @@ evalStmt abs f forStmt@(CFor init (Just cond) step stmt st) = do
   -- Technically this shouldn't happen
   rAbs <- evalCons a f cond True
   finalAbs <- abstractJoin lAbs rAbs
-  let fSt = setAbs (return finalAbs) nSt
+  fSt <- setAbs finalAbs nSt
   return (finalAbs, (CFor init (Just cond) step nStmt fSt))
 
 -- Others
