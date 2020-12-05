@@ -43,7 +43,7 @@ analyzeAST name = do
   tu   <- parseC name
   let nSymT = obtainArraySymT symT tu
   -- unroll the loop
-  let ntu   = unrollLoop tu 2
+  let ntu   = unrollLoop tu 1000
   let abs1  = astHelper nSymT
   let initS = initTo abs1 ntu
   return initS

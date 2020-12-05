@@ -17,9 +17,9 @@ findVarName varName funcName nameLst
 
 -- Convert "a" [3, 4, 5] to ["a#0#0#0", "a#0#0#1", ...]
 convertArray :: String -> String -> [Integer] -> [String] -> [String]
-convertArray v f ns s = newStr ++ (convertArrayHelper var ns)
+convertArray v f ns s = s ++ (convertArrayHelper var ns)
   where var    = findVarName v f s
-        newStr = delete var s
+        -- newStr = delete var s
 
 convertArrayHelper :: String -> [Integer] -> [String]
 convertArrayHelper var ns =
@@ -55,7 +55,11 @@ oaFunc s (CFunDef _ (CDeclr (Just (Ident f _ _)) _ _ _ _) decls stmt _) =
   where ns = foldl (\a b -> oaDecl a f b) s decls
 
 oaDecl :: [String] -> String -> CDeclaration a -> [String]
-oaDecl s f (CDecl _ [(decl, init, expr)] _) =
+oaDecl s f (CDecl _ decls _) =
+  foldl (\a b -> oaDeclHelper a f b) s decls
+
+oaDeclHelper :: [String] -> String -> (Maybe (CDeclarator a), Maybe (CInitializer a), Maybe (CExpression a)) -> [String]
+oaDeclHelper s f (decl, _, _) =
   case decl of
     -- Array name: v, length: n
     Just (CDeclr (Just (Ident v _ _)) cds _ _ _) -> convertArray v f (getArrayLength cds) s
@@ -63,7 +67,7 @@ oaDecl s f (CDecl _ [(decl, init, expr)] _) =
 
 -- Deal with the case of multiple-dimension arrays
 getArrayLength :: [CDerivedDeclarator a] -> [Integer]
-getArrayLength []     = []
+getArrayLength [] = []
 getArrayLength (cd:cds) =
   case cd of
     CArrDeclr _ (CArrSize _ (CConst (CIntConst (CInteger n _ _) _))) _ -> [n] ++ is

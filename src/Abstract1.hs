@@ -41,6 +41,7 @@ printAbstract1 (Abs1 _ True) = do
   putStrLn "  Unreachable"
 printAbstract1 (Abs1 vm _) = do
   putStrLn "Variables: "
+  -- putStrLn "  Reachable"
   printAbsLst (M.toAscList vm)
 
 printAbsLst :: [(String, Var)] -> IO ()
@@ -134,6 +135,13 @@ abstractAssignTexprArray a@(Abs1 vm _) (var:_) texpr size _ = do
   case v of
     Bottom -> error "Invalid Texpr"
     _      -> return (Abs1 nvm False)
+
+abstractTexprEval :: Abstract1 -> Texpr1 -> Abstract Int
+abstractTexprEval a t = do
+  v <- abstractTexprSolve a t
+  case v of
+    Const c -> return c
+    _       -> error ("Array index is not an integer: " ++ show t ++ " " ++ show v)
 
 -- | Helper Function
 

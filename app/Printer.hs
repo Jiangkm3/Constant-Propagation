@@ -132,6 +132,7 @@ printCBIs _ = error "Nested Function not Implemented"
 
 printExpr :: CExpression AbsState -> String
 printExpr (CConst (CIntConst cint _)) = show (getCInteger cint)
+printExpr (CConst (CStrConst cstr _)) = getCString cstr
 printExpr (CVar (Ident n _ _) _) = n
 printExpr (CBinary bop expr1 expr2 _) = str1 ++ " " ++ strop ++ " " ++ str2
   where str1  = printExpr expr1
@@ -148,10 +149,10 @@ printExpr (CAssign assop expr1 expr2 _) = "Assign: " ++ str1 ++ " " ++ strop ++ 
         strop = printAssop assop
         str2 = printExpr expr2
 printExpr (CIndex expr1 expr2 _) = "Array Item"
-printExpr _ = error "Expression Case Not Implemented"
+printExpr e = error ("Expression Case Not Implemented: " ++ (show e))
 
 isPrefixOp :: CUnaryOp -> Bool
-isPrefixOp unop = 
+isPrefixOp unop =
   case unop of
     CPostIncOp -> False
     CPostDecOp -> False

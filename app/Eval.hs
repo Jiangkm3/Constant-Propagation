@@ -20,6 +20,8 @@ import Language.C.Data.Node
 import Language.C.Syntax.AST
 import Language.C.Syntax.Constants
 import Control.Monad.State.Strict (liftIO)
+import Data.Char (ord)
+import Data.List (last, init)
 
 -----
 
@@ -97,6 +99,15 @@ evalDecl abs f (CDecl a b st) = do
 evalDeclHelper :: Abstract Abstract1 -> String -> (Maybe (CDeclarator AbsState), Maybe (CInitializer AbsState), Maybe (CExpression AbsState)) -> Abstract Abstract1
 -- If it is only a declaration, no need to change the abstraction
 evalDeclHelper a _ (_, Nothing, Nothing) = a
+
+-- A special case for String Assignment
+-- All the variable assignments are taken case in the (var, texpr) pair
+-- The standalone texpr returned should be empty
+evalDeclHelper a f (Just (CDeclr (Just id@(Ident v _ _)) _ _ _ _), (Just (CInitExpr expr@(CConst (CStrConst _ _)) st)), Nothing) = do
+  abs1 <- a
+  let assgExpr = CAssign CAssignOp (CVar id st) expr st
+  (_, pair) <- evalExpr abs1 f assgExpr
+  foldl absAssgHelper a pair
 
 evalDeclHelper a f (Just (CDeclr (Just (Ident v _ _)) _ _ _ _), (Just (CInitExpr expr _)), Nothing) = do
   abs1 <- a
@@ -221,8 +232,14 @@ evalStmt a f (CReturn (Just expr) st) = do
   return (nAbs, CReturn (Just expr) nSt)
 
 -- Compound Statments
+-- Since we will reach this statement after every if-else and loop,
+-- it is a good idea to check if the abstract1 is Bottom
+-- If it is, there is no need to continue
 evalStmt a f (CCompound ids cbis st) = do
-  (nAbs, ncbis) <- evalCBIs a f cbis
+  isBot <- abstractIsBottom a
+  (nAbs, ncbis) <- case isBot of
+                     True  -> return (a, cbis)
+                     False -> evalCBIs a f cbis
   nSt <- setAbs nAbs st
   return (nAbs, CCompound ids ncbis nSt)
 
@@ -307,13 +324,20 @@ type ExprSt = (Texpr1, [(VarName, Texpr1)])
 -- i.e. evaluate the constraint and return 0 or 1 based on result
 evalExpr :: Abstract1 -> String -> CExpression AbsState -> Abstract ExprSt
 
+-- String Assignment: int a[10] = "hello"
+evalExpr a f (CAssign CAssignOp (CVar (Ident v _ _) _) (CConst (CStrConst (CString s _) _)) _) = do
+  vLst <- evalList (map ord s)
+  var <- findScope v f
+  let assgLst = evalStringAssg var ((length vLst) - 1) vLst
+  dummyTexpr <- texprMakeConstant 1
+  return (dummyTexpr, assgLst)
+
 evalExpr a f (CAssign CAssignOp expr rhs _) = do
   -- Technically ++a would be different but ignore it for now
-  tvar <- case expr of
-           CVar (Ident v _ _) _ -> return v
-           CIndex _ _ _         -> evalIndex a expr
+  var <- case expr of
+           CVar (Ident v _ _) _ -> findScope v f
+           CIndex _ _ _         -> evalIndex a f expr
            _ -> error "Unsupported Assignment Operation"
-  var <- findScope tvar f
   (rtexpr, rpair) <- evalExpr a f rhs
   return (rtexpr, rpair ++ [(var, rtexpr)])
 
@@ -354,32 +378,46 @@ evalExpr a f e@(CUnary uop expr _) = do
     _          -> return (ntexpr, rpair)
 
 evalExpr a f e@(CIndex _ _ _) = do
-  v      <- evalIndex a e
-  var    <- findScope v f
+  var    <- evalIndex a f e
   ntexpr <- texprMakeLeafVar var
   return (ntexpr, [])
 
 evalExpr _ _ e = error ("expression not implemented: " ++ (show e))
 
-evalBool :: Bool -> Int32
+evalBool :: Bool -> Integer
 evalBool b =
   case b of
     True  -> 1
     False -> 0
 
+-- Convert a list of Int to a list of Texpr1
+evalList :: [Int] -> Abstract [Texpr1]
+evalList []     = return []
+evalList (i:is) = do
+  t  <- texprMakeConstant i
+  ts <- evalList is
+  return ([t] ++ ts)
+
 -- Obtain the correct variable when given an array
 -- Scope is applied in evalExpr
 -- Assume that every index is an integer (not variable or expression)
-evalIndex :: Abstract1 -> CExpression AbsState -> Abstract String
-evalIndex a (CIndex l r _) = do
+evalIndex :: Abstract1 -> String -> CExpression AbsState -> Abstract String
+evalIndex a f (CIndex l r _) = do
   lst <- case l of
-           CIndex _ _ _ -> evalIndex a l
-           CVar (Ident v _ _) _ -> return v
+           CIndex _ _ _ -> evalIndex a f l
+           CVar (Ident v _ _) _ -> findScope v f
            _ -> error "Unsupported Array Index"
-  let rst = case r of
-           CConst (CIntConst (CInteger n _ _) _) -> "#" ++ (show n)
-           _ -> error "Unsupported Array Index"
+  (rtexpr, _) <- evalExpr a f r
+  n <- abstractTexprEval a rtexpr
+  let rst = "#" ++ (show n)
   return (lst ++ rst)
+
+evalStringAssg :: String -> Int -> [Texpr1] -> [(VarName, Texpr1)]
+evalStringAssg v 0 [t] = [(v ++ "#0", t)]
+evalStringAssg v i ts =
+  (evalStringAssg v (i - 1) nts) ++ [(v ++ "#" ++ (show i), t)]
+  where t   = last ts
+        nts = init ts
 
 -- A helper function to deal with ++ and --
 incDecHelper :: CExpression AbsState -> String -> CUnaryOp -> Texpr1 -> ExprSt -> Abstract ExprSt
@@ -398,7 +436,7 @@ incDecHelper (CVar (Ident v _ _) _) f uop ntexpr (rtexpr, rpair) = do
 -- True if we want !(constraint)
 -- evalCons takes in Abstract Abstract1, as oppose to evalExpr taking Abstract1
 evalCons :: Abstract1 -> String -> CExpression AbsState -> Bool -> Abstract Abstract1
-evalCons a f (CBinary bop expr1 expr2 _) neg
+evalCons a f e@(CBinary bop expr1 expr2 _) neg
   | isBOpCons bop = do
     (ltexpr, lpair) <- evalExpr a f expr1
     (rtexpr, rpair) <- evalExpr a f expr2
@@ -418,8 +456,8 @@ evalCons a f (CBinary bop expr1 expr2 _) neg
     case bop of
       CLndOp -> abstractJoin lAbs rAbs
       CLorOp -> abstractMeet lAbs rAbs
-  | otherwise     = error "Int to Bool Conversion not supported"
-evalCons a f (CUnary uop expr _) neg
+  | otherwise     = error ("Int to Bool Conversion not supported: " ++ show e)
+evalCons a f e@(CUnary uop expr _) neg
   | uop == CNegOp = evalCons a f expr (not neg)
-  | otherwise     = error "Int to Bool Conversion not supported"
-evalCons a f _ _ = error "Int to Bool Conversion not supported"
+  | otherwise     = error ("Int to Bool Conversion not supported: " ++ show e)
+evalCons a f e _  = error ("Int to Bool Conversion not supported: " ++ show e)
