@@ -2,11 +2,11 @@
 -- operations in C to Texpr and Tcons in APRON
 
 module Operation where
-import Apron.AbstractMonad
-import Apron.Texpr1
-import Apron.Tcons1
+import AbstractMonad
+import Texpr1
+import Tcons1
 import Apron.Lincons1
-import Apron.TexprOp
+import Apron.Texpr1
 import Language.C.Syntax.AST
 import Control.Monad.State.Strict (liftIO)
 

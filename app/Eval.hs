@@ -11,10 +11,10 @@ module Eval where
 import GHC.Int
 import Init
 import Operation
-import Apron.Texpr1
-import Apron.Tcons1
-import Apron.Abstract1
-import Apron.AbstractMonad
+import Texpr1
+import Tcons1
+import Abstract1
+import AbstractMonad
 import Language.C.Data.Ident
 import Language.C.Data.Node
 import Language.C.Syntax.AST

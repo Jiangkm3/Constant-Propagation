@@ -12,13 +12,13 @@ source-repository head
 
 library const-prop
   exposed-modules:
-    Apron.AbstractMonad
-    Apron.Abstract1
-    Apron.Texpr1
-    Apron.Tcons1
+    AbstractMonad
+    Abstract1
+    Texpr1
+    Tcons1
     Apron.Var
     Apron.Lincons1
-    Apron.TexprOp
+    Apron.Texpr1
   hs-source-dirs:
     src
   build-depends:

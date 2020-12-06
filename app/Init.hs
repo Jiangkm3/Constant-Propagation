@@ -6,8 +6,8 @@ import           Parser
 import           Symbol
 import           Unroll
 import           Array
-import           Apron.Abstract1
-import           Apron.AbstractMonad
+import           Abstract1
+import           AbstractMonad
 
 -- | A simple user-defined AST annotation type
 -- You can extend this if it would be helpful

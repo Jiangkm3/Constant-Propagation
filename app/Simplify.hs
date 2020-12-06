@@ -2,8 +2,8 @@ module Simplify where
 
 import Language.C.Syntax.AST
 import Language.C.System.GCC
-import Apron.AbstractMonad
-import Apron.Abstract1
+import AbstractMonad
+import Abstract1
 import Init
 
 isBotState :: AbsState -> Abstract Bool
