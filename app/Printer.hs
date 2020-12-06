@@ -140,8 +140,8 @@ printExpr (CBinary bop expr1 expr2 _) = str1 ++ " " ++ strop ++ " " ++ str2
         str2  = printExpr expr2
 printExpr (CUnary unop expr _) =
   case (isPrefixOp unop) of
-    True  -> strop ++ "(" ++ str ++ ")"
-    False -> "(" ++ str ++ ")" ++ strop
+    True  -> strop ++ str
+    False -> str ++ strop
   where strop = printUnop unop
         str   = printExpr expr
 printExpr (CAssign assop expr1 expr2 _) = "Assign: " ++ str1 ++ " " ++ strop ++ " " ++ str2

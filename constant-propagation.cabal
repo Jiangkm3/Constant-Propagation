@@ -30,13 +30,13 @@ library const-prop
 executable constant-propagation-exe
   main-is: Main.hs
   other-modules:
+    Analysis
     Array
     Eval
     Init
     Operation
     Parser
     Printer
-    Simplify
     Symbol
     Unroll
   hs-source-dirs:
