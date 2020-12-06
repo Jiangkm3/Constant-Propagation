@@ -1,5 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module AbstractMonad where
+module Apron.AbstractMonad where
 import qualified Control.Monad.Fail         as Fail
 import           Control.Monad.State.Strict
 import           Data.List                  (find)

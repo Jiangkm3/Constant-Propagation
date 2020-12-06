@@ -1,6 +1,4 @@
 import Init
-import AbstractMonad
-import Abstract1
 import Eval
 import Printer
 import Simplify

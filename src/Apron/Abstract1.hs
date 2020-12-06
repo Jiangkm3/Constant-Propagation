@@ -1,9 +1,9 @@
-module Abstract1  where
-import           AbstractMonad
+module Apron.Abstract1  where
+import           Apron.AbstractMonad
 import           Apron.Var
+import           Apron.TexprOp
+import           Apron.Tcons1
 import           Apron.Texpr1
-import           Tcons1
-import           Texpr1
 import           Control.Monad.State.Strict
 import qualified Data.Map as M
 

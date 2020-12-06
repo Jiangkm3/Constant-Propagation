@@ -1,9 +1,9 @@
-module Tcons1 where
-import           AbstractMonad
+module Apron.Tcons1 where
+import           Apron.AbstractMonad
 import           Apron.Lincons1
-import           Apron.Texpr1
+import           Apron.TexprOp
 import           Apron.Var
-import           Texpr1
+import           Apron.Texpr1
 import           Control.Monad              (void)
 import           Control.Monad.State.Strict (liftIO)
 

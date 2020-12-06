@@ -1,29 +1,40 @@
 module Apron.Texpr1 where
+import           Apron.AbstractMonad
+import           Apron.TexprOp
+import           Control.Monad.State.Strict (liftIO)
 
-data OpType = ADD_OP
-            | SUB_OP
-            | MUL_OP
-            | DIV_OP
-            | MOD_OP
-            | POW_OP
-            | NEG_OP
-            | CAST_OP
-            | SQRT_OP
+type Value = Int
+
+data Texpr1 = Cst Value
+            | Var VarName
+            | UnOp OpType Texpr1
+            | BinOp OpType Texpr1 Texpr1
   deriving (Eq, Show)
 
-data RoundingType = ROUND_REAL
-                  | ROUND_INT
-                  | ROUND_SINGLE
-                  | ROUND_DOUBLE
-                  | ROUND_EXTENDED
-                  | ROUND_QUAD
-                  | ROUND_DO_NOT_USE_0
-  deriving (Eq, Show)
+-- Constructors, etc
 
-data RoundingDir = ROUND_NEAREST
-                 | ROUND_ZERO
-                 | ROUND_UP
-                 | ROUND_DOWN
-                 | ROUND_ALL
-                 | ROUND_DO_NOT_USE_1
-  deriving (Eq, Show)
+texprMakeConstant :: Value -> Abstract Texpr1
+texprMakeConstant v = do
+  return (Cst v)
+
+texprMakeLeafVar :: VarName -> Abstract Texpr1
+texprMakeLeafVar v = do
+  return (Var v)
+
+-- Ignore Rounding
+texprMakeUnOp :: OpType
+              -> Texpr1
+              -> RoundingType
+              -> RoundingDir
+              -> Abstract Texpr1
+texprMakeUnOp op t _ _= do
+  return (UnOp op t)
+
+texprMakeBinOp :: OpType
+               -> Texpr1
+               -> Texpr1
+               -> RoundingType
+               -> RoundingDir
+               -> Abstract Texpr1
+texprMakeBinOp op t1 t2 _ _ = do
+  return (BinOp op t1 t2)

@@ -1,8 +1,8 @@
 module Printer where
 
 import Init
-import Abstract1
-import AbstractMonad
+import Apron.Abstract1
+import Apron.AbstractMonad
 import Language.C.Data.Ident
 import Language.C.Syntax.AST
 import Language.C.Syntax.Constants
