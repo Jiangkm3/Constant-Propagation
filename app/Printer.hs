@@ -63,6 +63,13 @@ printDeclHelper (Just (CDeclr (Just (Ident varName _ _)) _ _ _ _), Nothing, Noth
 printDeclHelper (Just (CDeclr (Just (Ident varName _ _)) _ _ _ _), (Just (CInitExpr expr _)), Nothing) = varName ++ " = " ++ (printExpr expr) ++ ","
 pritnDeclHelper _ = error "Declaration case not implemented"
 
+printStmtDummy :: CStatement AbsState -> Abstract ()
+printStmtDummy (CCompound _ _ st) = do
+  liftIO $ putStrLn "Compound: "
+  printSt st
+  liftIO $ putStrLn ""
+printStmtDummy _ = error "Not a compound"
+
 printStmt :: CStatement AbsState -> Abstract ()
 printStmt (CCompound _ cbis _)     = printCBIs cbis
 printStmt (CReturn (Just expr) st) = do
@@ -78,10 +85,14 @@ printStmt (CReturn Nothing st) = do
 -- fstmt is of type Maybe (CStatmenet AbsState)
 printStmt (CIf expr tstmt fstmt st) = do
   liftIO $ putStrLn ("If " ++ (printExpr expr) ++ ":\n")
+  printStmtDummy tstmt
   printStmt tstmt
   liftIO $ putStrLn "Else:\n"
   case fstmt of
     Nothing -> liftIO $ putStrLn "Nothing or not Evaluated\n"
+    Just a -> printStmtDummy a
+  case fstmt of
+    Nothing -> return()
     Just a -> printStmt a
   liftIO $ putStrLn "End If"
   printSt st

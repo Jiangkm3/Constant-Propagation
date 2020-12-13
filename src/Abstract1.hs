@@ -41,8 +41,8 @@ printAbstract1 (Abs1 _ True) = do
   putStrLn "  Unreachable"
 printAbstract1 (Abs1 vm _) = do
   putStrLn "Variables: "
-  -- putStrLn "  Reachable"
-  printAbsLst (M.toAscList vm)
+  putStrLn "  Reachable"
+  -- printAbsLst (M.toAscList vm)
 
 printAbsLst :: [(String, Var)] -> IO ()
 printAbsLst [] = return ()
@@ -136,12 +136,12 @@ abstractAssignTexprArray a@(Abs1 vm _) (var:_) texpr size _ = do
     Bottom -> error "Invalid Texpr"
     _      -> return (Abs1 nvm False)
 
-abstractTexprEval :: Abstract1 -> Texpr1 -> Abstract Int
+abstractTexprEval :: Abstract1 -> Texpr1 -> Abstract Var
 abstractTexprEval a t = do
   v <- abstractTexprSolve a t
   case v of
-    Const c -> return c
-    _       -> error ("Array index is not an integer: " ++ show t ++ " " ++ show v)
+    Bottom -> error ("Array index is Unreachable: " ++ show t ++ " " ++ show v)
+    _      -> return v
 
 -- | Helper Function
 
@@ -149,7 +149,7 @@ abstractTexprSolve :: Abstract1 -> Texpr1 -> Abstract Var
 abstractTexprSolve (Abs1 _ True) t = return Bottom
 abstractTexprSolve (Abs1 vm _) (Var v) = do
   case M.lookup v vm of
-    Nothing  -> error "Variable does not exist"
+    Nothing  -> error ("Variable does not exist: " ++ v)
     Just var -> return var
 abstractTexprSolve _ (Cst c) = do
   return (Const c)

@@ -15,6 +15,7 @@ import Texpr1
 import Tcons1
 import Abstract1
 import AbstractMonad
+import Apron.Var
 import Language.C.Data.Ident
 import Language.C.Data.Node
 import Language.C.Syntax.AST
@@ -26,15 +27,10 @@ import Data.List (last, init)
 -----
 
 {- Program -}
--- Get the initial state of Abstract_Top
-getInitSt :: Abstract Abstract1 -> Abstract Abstract1
-getInitSt st = do
-  abs <- abstractTop
-  return abs
-
 evalProg :: CTranslationUnit AbsState -> Abstract (CTranslationUnit AbsState)
 evalProg (CTranslUnit extDecls (State a loc)) = do
-  abs <- getInitSt a
+  labs <- a
+  abs <- abstractTop
   nExtDecls <- evalEDLst abs extDecls
   let nSt = State (return abs) loc
   return (CTranslUnit nExtDecls nSt)
@@ -326,7 +322,7 @@ evalExpr :: Abstract1 -> String -> CExpression AbsState -> Abstract ExprSt
 
 -- String Assignment: int a[10] = "hello"
 evalExpr a f (CAssign CAssignOp (CVar (Ident v _ _) _) (CConst (CStrConst (CString s _) _)) _) = do
-  vLst <- evalList (map ord s)
+  vLst <- evalList (map ord (s ++ "\0"))
   var <- findScope v f
   let assgLst = evalStringAssg var ((length vLst) - 1) vLst
   dummyTexpr <- texprMakeConstant 1
@@ -409,7 +405,9 @@ evalIndex a f (CIndex l r _) = do
            _ -> error "Unsupported Array Index"
   (rtexpr, _) <- evalExpr a f r
   n <- abstractTexprEval a rtexpr
-  let rst = "#" ++ (show n)
+  let rst = case n of
+              Const c -> "#" ++ (show c)
+              _       -> ""
   return (lst ++ rst)
 
 evalStringAssg :: String -> Int -> [Texpr1] -> [(VarName, Texpr1)]
