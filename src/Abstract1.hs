@@ -41,8 +41,8 @@ printAbstract1 (Abs1 _ True) = do
   putStrLn "  Unreachable"
 printAbstract1 (Abs1 vm _) = do
   putStrLn "Variables: "
-  putStrLn "  Reachable"
-  -- printAbsLst (M.toAscList vm)
+  -- putStrLn "  Reachable"
+  printAbsLst (M.toAscList vm)
 
 printAbsLst :: [(String, Var)] -> IO ()
 printAbsLst [] = return ()

@@ -50,9 +50,13 @@ oaExtDecl s (CFDefExt func) = oaFunc s func
 oaExtDecl _ _ = error "CAsmExt not implemented"
 
 oaFunc :: [String] -> CFunctionDef a -> [String]
-oaFunc s (CFunDef _ (CDeclr (Just (Ident f _ _)) _ _ _ _) decls stmt _) =
-  oaStmt ns f stmt
-  where ns = foldl (\a b -> oaDecl a f b) s decls
+oaFunc s (CFunDef _ (CDeclr (Just (Ident f _ _)) (funDeclr:_) _ _ _) decls stmt _) =
+  oaStmt fs f stmt
+  where ns = case funDeclr of
+               CFunDeclr (Right (funDecls, False)) _ _ -> foldDecl s funDecls
+               _ -> s
+        fs = foldDecl ns decls
+        foldDecl m n = foldl (\a b -> oaDecl a f b) m n
 
 oaDecl :: [String] -> String -> CDeclaration a -> [String]
 oaDecl s f (CDecl _ decls _) =
@@ -71,6 +75,8 @@ getArrayLength [] = []
 getArrayLength (cd:cds) =
   case cd of
     CArrDeclr _ (CArrSize _ (CConst (CIntConst (CInteger n _ _) _))) _ -> [n] ++ is
+    CPtrDeclr _ _   -> error "Pointer Declarator Not Supported"
+    CFunDeclr _ _ _ -> error "Function Declarator Not Supported"
     _ -> error "Unsupported Derived Declarator"
   where is = getArrayLength cds
 

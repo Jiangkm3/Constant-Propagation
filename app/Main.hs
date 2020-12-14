@@ -6,7 +6,7 @@ import Printer
 import Simplify
 
 main = do
-  let fileName = "/home/jiangkm3/compiler-test/test1.c"
+  let fileName = "/home/jiangkm3/compiler-test/mm_flat.c"
   iast <- analyzeAST fileName
   let nast = evalProg iast
   let fast = removeBot nast
